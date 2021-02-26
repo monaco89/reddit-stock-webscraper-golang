@@ -1,0 +1,170 @@
+package main
+
+import (
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"strings"
+	"time"
+
+	"net/http"
+
+	"github.com/gocolly/colly"
+)
+
+type Thread struct {
+	Title string
+	URL   string
+}
+
+type CommentIds struct {
+	data        string
+	Species     string
+	Description string
+}
+
+type Response struct {
+	Data []string `json:"data"`
+}
+
+func grabHTML() []Thread {
+	threads := []Thread{}
+	url := "https://www.reddit.com/r/wallstreetbets/search/?q=flair%3A%22Daily%20Discussion%22&restrict_sr=1&sort=new"
+	c := colly.NewCollector()
+
+	// _eYtD2XCVieq6emjKBH3m
+	// We want all objects with this specific class
+	c.OnHTML("._2INHSNB8V5eaWp4P0rY_mE", func(e *colly.HTMLElement) {
+		discussion := Thread{}
+		discussion.Title = e.Text
+		discussion.URL = e.Attr("href")
+		threads = append(threads, discussion)
+	})
+
+	//onHTML function allows the collector to use a callback function when the specific HTML tag is reached
+	//in this case whenever our collector finds an
+	//anchor tag with href it will call the anonymous function
+	// specified below which will get the info from the href and append it to our slice
+	// c.OnHTML("a[href]", func(e *colly.HTMLElement) {
+	// 	link := e.Request.AbsoluteURL(e.Attr("href"))
+	// 	if link != "" {
+	// 		response = append(response, link)
+	// 	}
+	// })
+
+	// c.OnScraped(func(r *colly.Response) {
+	// 	log.Println("Finished. Here is your data:", threads)
+	// 	// parse our response slice into JSON format
+	// 	// b, err := json.Marshal(threads)
+	// 	// if err != nil {
+	// 	// 	log.Println("failed to serialize response:", err)
+	// 	// 	return
+	// 	// }
+	// })
+
+	err := c.Visit(url)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return threads
+}
+
+func getLink(threads []Thread) string {
+	// yesterday := time.Now().AddDate(0, 0, -1).Format("February 16, 2021")
+	yesterday := time.Now().AddDate(0, 0, -1)
+	link := ""
+
+	for _, thread := range threads {
+		/*
+		   Check if it's a DD or weekend thread
+		   Then split up text to only get last three parts
+		   Conver to datetime then compare to yesterdays date
+		   If equal, grab link from parent element
+		*/
+		if strings.HasPrefix(thread.Title, "Daily Discussion Thread") {
+			threadTitle := strings.Split(thread.Title, " ")
+			threadDate := strings.Join(threadTitle[len(threadTitle)-3:], " ")
+
+			// TODO Format threadDate to a time format to compare with
+			date, err := time.Parse("February 16, 2021", threadDate)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			fmt.Println(yesterday, date)
+			if yesterday == date {
+				fmt.Println("yesterday", threadDate)
+			}
+
+		}
+	}
+
+	return link
+}
+
+func grabCommentIds(linkID string) []string {
+	resp, err := http.Get(fmt.Sprintf("https://api.pushshift.io/reddit/submission/comment_ids/%s", linkID))
+	if err != nil {
+		fmt.Println(err)
+	}
+	// Read body then convert to string
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	sb := string(body)
+
+	defer resp.Body.Close()
+	var cResp Response
+	// Parse the json string
+	if json.Unmarshal([]byte(sb), &cResp); err != nil {
+		fmt.Println(err)
+	}
+
+	return cResp.Data
+}
+
+func grabStockList() []string {
+	// For API, https://dumbstockapi.com/stock?format=tickers-only&exchange=NYSE
+	// https://dumbstockapi.com/stock?format=tickers-only&exchange=NASDAQ
+	f, err := os.Open("tickers.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Get rows from csv
+	rows, err := csv.NewReader(f).ReadAll()
+	f.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// We only want the first column (tickers)
+	var tickers []string
+	for _, line := range rows[1:] {
+		tickers = append(tickers, line[0])
+	}
+
+	return tickers
+}
+
+func main() {
+	// threads := grabHTML()
+	log.Println("Grabbing discussion id...")
+	// linkID := getLink(threads)
+	linkID := "lra5cg"
+	// log.Println("Link:", linkID)
+	log.Println("Grabbing comment id...")
+	commentIds := grabCommentIds(linkID)
+	log.Println(commentIds)
+	log.Println("Grabbing stock symbols from csv...")
+	tickers := grabStockList()
+	log.Println(tickers)
+	// TODO Get stocks from comments
+	// TODO Write results to csv
+	// TODO Upload to S3
+}

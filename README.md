@@ -13,8 +13,3 @@
 
 - Gather current stock tickets on a monthly? interval from [dumbstockapi](https://dumbstockapi.com/)
 - Write to database
-
-Export the project dependencies as requirements.txt
-`poetry export -f requirements.txt > requirements.txt --without-hashes`
-
-GoLang version coming soon...

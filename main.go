@@ -20,14 +20,31 @@ type Thread struct {
 	URL   string
 }
 
-type CommentIds struct {
-	data        string
-	Species     string
-	Description string
+type Comment struct {
+	Body string `json:"body"`
 }
-
 type Response struct {
 	Data []string `json:"data"`
+}
+
+type CommentResponse struct {
+	Data []Comment `json:"data"`
+}
+
+type StockMentions struct {
+	// symbol   string
+	Mentions int
+}
+
+var Stocks = make(map[string]StockMentions)
+
+func Contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }
 
 func grabHTML() []Thread {
@@ -152,19 +169,88 @@ func grabStockList() []string {
 	return tickers
 }
 
+func getComments(idsString string) []Comment {
+	resp, err := http.Get(fmt.Sprintf("https://api.pushshift.io/reddit/comment/search?ids=%s&fields=body&size=500", idsString))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Read body then convert to string
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	sb := string(body)
+
+	defer resp.Body.Close()
+	var cResp CommentResponse
+	// Parse the json string
+	if json.Unmarshal([]byte(sb), &cResp); err != nil {
+		fmt.Println(err)
+	}
+
+	return cResp.Data
+}
+
+func countTickerMentions(commentsText []Comment, tickers []string) {
+	replacer := strings.NewReplacer(",", "", ".", "", ";", "")
+	// Loop through each comment body field
+	for _, comment := range commentsText {
+		text := replacer.Replace(comment.Body)
+		words := strings.Fields(text)
+		// Loop through each word in body
+		// fmt.Println(words)
+		for _, word := range words {
+			// fmt.Println(j, " => ", word)
+			// Scan for each stock ticker in comment body then add to Stocks map
+			isTicker := Contains(tickers, word)
+
+			if isTicker {
+				fmt.Println("Found:", word)
+				count := Stocks[word].Mentions
+				mentions := StockMentions{Mentions: count + 1}
+				Stocks[word] = mentions
+			}
+		}
+	}
+}
+
+func scanComments(commentIds []string, tickers []string) {
+	orgList := commentIds
+	// Can only query 500 ids at a time
+	// Loop through array 500 each
+	i := 0
+	// ! Testing
+	for 35000 < len(orgList) {
+		// Get first 500 ids, put in string
+		// idsString := strings.Join(orgList[0:500], ",")
+		// ! Testing
+		idsString := strings.Join(orgList[0:15], ",")
+		// Removed used ids
+		orgList = orgList[i*500:]
+		// Get comment text
+		commentsText := getComments(idsString)
+		// Count stock ticker mentions
+		countTickerMentions(commentsText, tickers)
+		i++
+	}
+}
+
 func main() {
 	// threads := grabHTML()
 	log.Println("Grabbing discussion id...")
 	// linkID := getLink(threads)
 	linkID := "lra5cg"
-	// log.Println("Link:", linkID)
+	// log.Println("Link: ", linkID)
 	log.Println("Grabbing comment id...")
 	commentIds := grabCommentIds(linkID)
-	log.Println(commentIds)
+	log.Println("# of ids...", len(commentIds))
 	log.Println("Grabbing stock symbols from csv...")
 	tickers := grabStockList()
-	log.Println(tickers)
-	// TODO Get stocks from comments
+	// Get stocks from comments
+	log.Println("Counting stock mentions...")
+	scanComments(commentIds, tickers)
+	log.Println(Stocks)
 	// TODO Write results to csv
 	// TODO Upload to S3
 }

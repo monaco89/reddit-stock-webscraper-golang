@@ -7,4 +7,4 @@ phases:
   build:
     commands:
       - make
-      - sls deploy --verbose
+      - SLS_DEBUG=1 sls deploy --verbose

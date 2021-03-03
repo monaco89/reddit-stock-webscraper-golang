@@ -15,6 +15,7 @@ import (
 
 	"net/http"
 
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -348,7 +349,7 @@ func uploadToS3() {
 	}
 }
 
-func main() {
+func startTheShow() {
 	// threads := grabHTML()
 	log.Println("Grabbing discussion id...")
 	// linkID := getLink(threads)
@@ -366,5 +367,9 @@ func main() {
 	log.Println("Writing count to CSV...")
 	writeToCsv()
 	log.Println("Uploading CSV to S3...")
-	// uploadToS3()
+	uploadToS3()
+}
+
+func main() {
+	lambda.Start(startTheShow)
 }

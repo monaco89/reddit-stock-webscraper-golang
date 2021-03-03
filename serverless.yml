@@ -12,5 +12,7 @@ package:
    - ./bin/**
 
 functions:
-  hello:
+  main:
     handler: bin/main
+    # environment:
+    #   S3_BUCKET: "example-bucket"

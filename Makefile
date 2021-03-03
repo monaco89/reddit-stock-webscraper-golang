@@ -9,3 +9,6 @@ clean:
 
 deploy: clean build
 	sls deploy --verbose
+
+run-local:
+	go run scrapper/main.go

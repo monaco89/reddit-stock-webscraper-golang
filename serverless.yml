@@ -12,7 +12,7 @@ package:
    - ./bin/**
 
 functions:
-  main:
-    handler: bin/main
+  scrapper:
+    handler: bin/scrapper
     # environment:
     #   S3_BUCKET: "example-bucket"

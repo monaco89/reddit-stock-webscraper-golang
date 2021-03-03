@@ -1,0 +1,16 @@
+service: reddit-golang-webscrapper
+
+provider:
+  region: "us-east-1"
+  name: aws
+  runtime: go1.x
+
+package:
+ exclude:
+   - ./**
+ include:
+   - ./bin/**
+
+functions:
+  hello:
+    handler: bin/main

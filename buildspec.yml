@@ -6,4 +6,5 @@ phases:
       - yarn global add serverless
   build:
     commands:
+      - make
       - sls deploy

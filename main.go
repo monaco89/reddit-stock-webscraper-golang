@@ -1,43 +1,58 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"net/http"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gocolly/colly"
+	"github.com/joho/godotenv"
 )
 
+// Thread - Reddit thread data
 type Thread struct {
 	Title string
 	URL   string
 }
 
+// Comment - comment data json response
 type Comment struct {
 	Body string `json:"body"`
 }
+
+// Response - pushshift json response
 type Response struct {
 	Data []string `json:"data"`
 }
 
+// CommentResponse - pushshift comment data json response
 type CommentResponse struct {
 	Data []Comment `json:"data"`
 }
 
+// StockMentions - data structure for CSV
 type StockMentions struct {
 	// symbol   string
 	Mentions int
 }
 
+// Stocks - global variable stock ticker counter
 var Stocks = make(map[string]StockMentions)
 
+// Contains finds string in array of strings
 func Contains(a []string, x string) bool {
 	for _, n := range a {
 		if x == n {
@@ -45,6 +60,14 @@ func Contains(a []string, x string) bool {
 		}
 	}
 	return false
+}
+
+// init is invoked before main()
+func init() {
+	// loads values from .env into the system
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
 }
 
 func grabHTML() []Thread {
@@ -110,12 +133,12 @@ func getLink(threads []Thread) string {
 			date, err := time.Parse("February 16, 2021", threadDate)
 
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 
-			fmt.Println(yesterday, date)
+			// log.Println(yesterday, date)
 			if yesterday == date {
-				fmt.Println("yesterday", threadDate)
+				log.Println("yesterday", threadDate)
 			}
 
 		}
@@ -125,14 +148,14 @@ func getLink(threads []Thread) string {
 }
 
 func grabCommentIds(linkID string) []string {
-	resp, err := http.Get(fmt.Sprintf("https://api.pushshift.io/reddit/submission/comment_ids/%s", linkID))
+	resp, err := http.Get("https://api.pushshift.io/reddit/submission/comment_ids/" + linkID)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	// Read body then convert to string
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	sb := string(body)
 
@@ -140,7 +163,7 @@ func grabCommentIds(linkID string) []string {
 	var cResp Response
 	// Parse the json string
 	if json.Unmarshal([]byte(sb), &cResp); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	return cResp.Data
@@ -170,15 +193,15 @@ func grabStockList() []string {
 }
 
 func getComments(idsString string) []Comment {
-	resp, err := http.Get(fmt.Sprintf("https://api.pushshift.io/reddit/comment/search?ids=%s&fields=body&size=500", idsString))
+	resp, err := http.Get("https://api.pushshift.io/reddit/comment/search?ids=" + idsString + "&fields=body&size=500")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	// Read body then convert to string
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	sb := string(body)
 
@@ -186,7 +209,7 @@ func getComments(idsString string) []Comment {
 	var cResp CommentResponse
 	// Parse the json string
 	if json.Unmarshal([]byte(sb), &cResp); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	return cResp.Data
@@ -199,14 +222,12 @@ func countTickerMentions(commentsText []Comment, tickers []string) {
 		text := replacer.Replace(comment.Body)
 		words := strings.Fields(text)
 		// Loop through each word in body
-		// fmt.Println(words)
 		for _, word := range words {
-			// fmt.Println(j, " => ", word)
 			// Scan for each stock ticker in comment body then add to Stocks map
 			isTicker := Contains(tickers, word)
 
 			if isTicker {
-				fmt.Println("Found:", word)
+				// log.Println("Found:", word)
 				count := Stocks[word].Mentions
 				mentions := StockMentions{Mentions: count + 1}
 				Stocks[word] = mentions
@@ -220,7 +241,7 @@ func scanComments(commentIds []string, tickers []string) {
 	// Can only query 500 ids at a time
 	// Loop through array 500 each
 	i := 0
-	// ! Testing
+	// ! Testing, should be 0
 	for 35000 < len(orgList) {
 		// Get first 500 ids, put in string
 		// idsString := strings.Join(orgList[0:500], ",")
@@ -233,6 +254,97 @@ func scanComments(commentIds []string, tickers []string) {
 		// Count stock ticker mentions
 		countTickerMentions(commentsText, tickers)
 		i++
+	}
+}
+
+func sortMap(unsortedMap map[string]StockMentions) map[string]StockMentions {
+	var sortedMap map[string]StockMentions
+	var keys []string
+	for k := range unsortedMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// To perform the opertion you want
+	for _, k := range keys {
+		fmt.Println("Key:", k, "Value:", unsortedMap[k])
+		// TODO assign sortedMap
+	}
+
+	return sortedMap
+}
+
+func writeToCsv() {
+
+	// Write tmp file
+	file, err := os.Create("/tmp/redditStocks.csv")
+	if err != nil {
+		log.Println(err)
+	}
+
+	w := csv.NewWriter(file)
+	// TODO Invoke sorted map method to sort them alphanumerically first
+	// Loop through global variable and write
+	for key, stockset := range Stocks {
+		// // TODO Write to temp CSV file
+		err := w.Write([]string{fmt.Sprintf("%v", key), fmt.Sprintf("%v", stockset.Mentions)})
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
+	w.Flush()
+}
+
+// AddFileToS3 will upload a single file to S3, it will require a pre-built aws session
+// and will set file info like content type and encryption on the uploaded file.
+func AddFileToS3(s *session.Session, fileDir string) error {
+	// Get the environment variable
+	s3BucketName, exists := os.LookupEnv("S3_BUCKET")
+
+	if exists {
+		// Open the file for use
+		file, err := os.Open(fileDir)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		// Get file size and read the file content into a buffer
+		fileInfo, _ := file.Stat()
+		var size int64 = fileInfo.Size()
+		buffer := make([]byte, size)
+		file.Read(buffer)
+
+		// Config settings: this is where you choose the bucket, filename, content-type etc.
+		// of the file you're uploading.
+		_, err = s3.New(s).PutObject(&s3.PutObjectInput{
+			Bucket:               aws.String(s3BucketName),
+			Key:                  aws.String(fileDir),
+			ACL:                  aws.String("private"),
+			Body:                 bytes.NewReader(buffer),
+			ContentLength:        aws.Int64(size),
+			ContentType:          aws.String(http.DetectContentType(buffer)),
+			ContentDisposition:   aws.String("attachment"),
+			ServerSideEncryption: aws.String("AES256"),
+		})
+		return err
+	}
+
+	return errors.New("Can't get env variable")
+}
+
+func uploadToS3() {
+	// Create a single AWS session (we can re use this if we're uploading many files)
+	s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Upload
+	err = AddFileToS3(s, "/tmp.redditStocks.csv")
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -251,6 +363,8 @@ func main() {
 	log.Println("Counting stock mentions...")
 	scanComments(commentIds, tickers)
 	log.Println(Stocks)
-	// TODO Write results to csv
-	// TODO Upload to S3
+	log.Println("Writing count to CSV...")
+	writeToCsv()
+	log.Println("Uploading CSV to S3...")
+	// uploadToS3()
 }

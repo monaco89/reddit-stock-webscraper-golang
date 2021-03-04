@@ -1,4 +1,4 @@
-# Reddit Stock Webscrapper
+# Reddit Stock Web Scraper
 
 ## What it does
 

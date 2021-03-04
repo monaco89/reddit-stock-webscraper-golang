@@ -4,6 +4,7 @@ provider:
   region: "us-east-1"
   name: aws
   runtime: go1.x
+  timeout: 30
 
 package:
  exclude:
@@ -14,5 +15,8 @@ package:
 functions:
   scrapper:
     handler: bin/scrapper
+    # events:
+    #   # every Monday at 03:15 AM
+    #   - schedule: cron(15 3 ? * MON *)
     environment:
       S3_FILES_BUCKET: ${env:S3_FILES_BUCKET, self:provider.S3_FILES_BUCKET}

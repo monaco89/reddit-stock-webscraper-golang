@@ -199,7 +199,7 @@ func getFileFromS3(s *session.Session, fileName string) error {
 }
 
 func grabStockList() []string {
-	fileName := "tickers.csv"
+	fileName := "/tmp/tickers.csv"
 	var tickers []string
 	// For API, https://dumbstockapi.com/stock?format=tickers-only&exchange=NYSE
 	// https://dumbstockapi.com/stock?format=tickers-only&exchange=NASDAQ

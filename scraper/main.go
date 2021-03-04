@@ -189,9 +189,7 @@ func getFileFromS3(s *session.Session, fileName string) error {
 			Key:    aws.String(fileName),
 		})
 
-	if errDownload != nil {
-		fmt.Println(err)
-	}
+	return errDownload
 	// }
 
 	// return errors.New("Can't get env variable")

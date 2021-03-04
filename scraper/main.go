@@ -140,6 +140,10 @@ func getLink(threads []Thread) string {
 		}
 	}
 
+	if link == "" {
+		panic("Couldn't Get Link Id")
+	}
+
 	return link
 }
 
@@ -297,12 +301,9 @@ func scanComments(commentIds []string, tickers []string) {
 	// Can only query 500 ids at a time
 	// Loop through array 500 each
 	i := 0
-	// ! Testing, should be 0
-	for 35000 < len(orgList) {
+	for 0 < len(orgList) {
 		// Get first 500 ids, put in string
-		// idsString := strings.Join(orgList[0:500], ",")
-		// ! Testing
-		idsString := strings.Join(orgList[0:15], ",")
+		idsString := strings.Join(orgList[0:500], ",")
 		// Removed used ids
 		orgList = orgList[i*500:]
 		// Get comment text
@@ -353,9 +354,9 @@ func writeToCsv() {
 
 // AddFileToS3 will upload a single file to S3, it will require a pre-built aws session
 // and will set file info like content type and encryption on the uploaded file.
-func AddFileToS3(s *session.Session, fileDir string) error {
+func AddFileToS3(s *session.Session, fileName string) error {
 	// Open the file for use
-	file, err := os.Open(fileDir)
+	file, err := os.Open("/tmp/" + fileName)
 	if err != nil {
 		return err
 	}
@@ -371,7 +372,7 @@ func AddFileToS3(s *session.Session, fileDir string) error {
 	// of the file you're uploading.
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:               aws.String(os.Getenv("S3_FILES_BUCKET")),
-		Key:                  aws.String(fileDir),
+		Key:                  aws.String(fileName),
 		ACL:                  aws.String("private"),
 		Body:                 bytes.NewReader(buffer),
 		ContentLength:        aws.Int64(size),
@@ -391,7 +392,7 @@ func uploadToS3() {
 	}
 
 	// Upload
-	err = AddFileToS3(s, "/tmp/redditStocks.csv")
+	err = AddFileToS3(s, "redditStocks.csv")
 	if err != nil {
 		log.Fatal(err)
 	}

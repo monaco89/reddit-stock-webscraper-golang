@@ -1,4 +1,4 @@
-service: reddit-golang-webscrapper
+service: reddit-golang-webscraper
 
 provider:
   region: "us-east-1"
@@ -13,8 +13,8 @@ package:
    - ./bin/**
 
 functions:
-  scrapper:
-    handler: bin/scrapper
+  scraper:
+    handler: bin/scraper
     # events:
     #   # every Monday at 03:15 AM
     #   - schedule: cron(15 3 ? * MON *)

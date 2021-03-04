@@ -1,4 +1,4 @@
-module reddit-webscrapper-golang
+module reddit-webscraper-golang
 
 go 1.15
 

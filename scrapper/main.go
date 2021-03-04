@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
 )
@@ -170,22 +171,66 @@ func grabCommentIds(linkID string) []string {
 	return cResp.Data
 }
 
+func getFileFromS3(s *session.Session, fileName string) error {
+	// Get the environment variable
+	s3BucketName, exists := os.LookupEnv("S3_FILES_BUCKET")
+
+	if exists {
+		// Open the file for use
+		file, err := os.Create(fileName)
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer file.Close()
+
+		downloader := s3manager.NewDownloader(s)
+		_, errDownload := downloader.Download(file,
+			&s3.GetObjectInput{
+				Bucket: aws.String(s3BucketName),
+				Key:    aws.String(fileName),
+			})
+
+		if errDownload != nil {
+			fmt.Println(err)
+		}
+	}
+
+	return errors.New("Can't get env variable")
+}
+
 func grabStockList() []string {
+	var tickers []string
 	// For API, https://dumbstockapi.com/stock?format=tickers-only&exchange=NYSE
 	// https://dumbstockapi.com/stock?format=tickers-only&exchange=NASDAQ
-	f, err := os.Open("tickers.csv")
+
+	// TODO If file already exists
+	fileName := "tickers.csv"
+	// Create a single AWS session
+	s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Get file from s3 bucket
+	err = getFileFromS3(s, fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Open the file downloaded from s3
+	file, err := os.Open(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Get rows from csv
-	rows, err := csv.NewReader(f).ReadAll()
-	f.Close()
+	rows, err := csv.NewReader(file).ReadAll()
+	file.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// We only want the first column (tickers)
-	var tickers []string
 	for _, line := range rows[1:] {
 		tickers = append(tickers, line[0])
 	}
@@ -268,7 +313,7 @@ func sortMap(unsortedMap map[string]StockMentions) map[string]StockMentions {
 
 	// To perform the opertion you want
 	for _, k := range keys {
-		fmt.Println("Key:", k, "Value:", unsortedMap[k])
+		log.Println("Key:", k, "Value:", unsortedMap[k])
 		// TODO assign sortedMap
 	}
 
@@ -284,10 +329,9 @@ func writeToCsv() {
 	}
 
 	w := csv.NewWriter(file)
-	// TODO Invoke sorted map method to sort them alphanumerically first
+	// TODO Invoke sorted map method to sort them count
 	// Loop through global variable and write
 	for key, stockset := range Stocks {
-		// // TODO Write to temp CSV file
 		err := w.Write([]string{fmt.Sprintf("%v", key), fmt.Sprintf("%v", stockset.Mentions)})
 		if err != nil {
 			log.Println(err)
@@ -343,7 +387,7 @@ func uploadToS3() {
 	}
 
 	// Upload
-	err = AddFileToS3(s, "/tmp.redditStocks.csv")
+	err = AddFileToS3(s, "/tmp/redditStocks.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -353,6 +397,7 @@ func startTheShow() {
 	// threads := grabHTML()
 	log.Println("Grabbing discussion id...")
 	// linkID := getLink(threads)
+	// ! For testing
 	linkID := "lra5cg"
 	// log.Println("Link: ", linkID)
 	log.Println("Grabbing comment id...")

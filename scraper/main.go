@@ -20,7 +20,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/gocolly/colly"
-	"github.com/joho/godotenv"
 )
 
 // Thread - Reddit thread data
@@ -64,12 +63,12 @@ func Contains(a []string, x string) bool {
 }
 
 // init is invoked before main()
-func init() {
-	// loads values from .env into the system
-	if err := godotenv.Load(); err != nil {
-		log.Print("No .env file found")
-	}
-}
+// func init() {
+// 	// loads values from .env into the system
+// 	if err := godotenv.Load(); err != nil {
+// 		log.Print("No .env file found")
+// 	}
+// }
 
 func grabHTML() []Thread {
 	threads := []Thread{}
@@ -198,8 +197,6 @@ func getFileFromS3(s *session.Session, fileName string) error {
 func grabStockList() []string {
 	fileName := "/tmp/tickers.csv"
 	var tickers []string
-	// For API, https://dumbstockapi.com/stock?format=tickers-only&exchange=NYSE
-	// https://dumbstockapi.com/stock?format=tickers-only&exchange=NASDAQ
 
 	// Check if file already exists
 	_, err := os.Stat(fileName)
@@ -230,12 +227,36 @@ func grabStockList() []string {
 		log.Fatal(err)
 	}
 
+	log.Println("rows length", len(rows))
+
 	// We only want the first column (tickers)
 	for _, line := range rows[1:] {
 		tickers = append(tickers, line[0])
 	}
 
 	return tickers
+}
+
+func fetchStockList() []string {
+	resp, err := http.Get("https://dumbstockapi.com/stock?format=tickers-only&exchange=NYSE,NASDAQ")
+	if err != nil {
+		log.Println(err)
+	}
+	// Read body then convert to string
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+	}
+	sb := string(body)
+
+	defer resp.Body.Close()
+	var cResp []string
+	// Parse the json string
+	if json.Unmarshal([]byte(sb), &cResp); err != nil {
+		log.Println(err)
+	}
+
+	return cResp
 }
 
 func getComments(idsString string) []Comment {
@@ -405,8 +426,9 @@ func startTheShow() {
 	commentIds := grabCommentIds(linkID)
 	log.Println("# of ids...", len(commentIds))
 	log.Println("Grabbing stock symbols from csv...")
-	tickers := grabStockList()
-	// Get stocks from comments
+	tickers := fetchStockList()
+	log.Println(tickers)
+	// tickers := grabStockList()
 	log.Println("Counting stock mentions...")
 	scanComments(commentIds, tickers)
 	log.Println(Stocks)
@@ -417,5 +439,10 @@ func startTheShow() {
 }
 
 func main() {
-	lambda.Start(startTheShow)
+	env := os.Getenv("ENV")
+	if env == "local" {
+		startTheShow()
+	} else {
+		lambda.Start(startTheShow)
+	}
 }

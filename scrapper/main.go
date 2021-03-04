@@ -348,7 +348,7 @@ func writeToCsv() {
 // and will set file info like content type and encryption on the uploaded file.
 func AddFileToS3(s *session.Session, fileDir string) error {
 	// Get the environment variable
-	s3BucketName, exists := os.LookupEnv("S3_BUCKET")
+	s3BucketName, exists := os.LookupEnv("S3_FILES_BUCKET")
 
 	if exists {
 		// Open the file for use

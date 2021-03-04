@@ -8,3 +8,9 @@ phases:
     commands:
       - make
       - SLS_DEBUG=1 sls deploy --verbose
+
+# artifacts:
+#   files:
+#   - target/**/*
+#   - serverless.yml
+

@@ -14,5 +14,5 @@ package:
 functions:
   scrapper:
     handler: bin/scrapper
-    # environment:
-    #   S3_BUCKET: "example-bucket"
+    environment:
+      S3_FILES_BUCKET: ${env:S3_FILES_BUCKET, self:provider.S3_FILES_BUCKET}

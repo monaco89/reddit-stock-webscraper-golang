@@ -64,10 +64,6 @@ func Contains(a []string, x string) bool {
 
 // init is invoked before main()
 // func init() {
-// 	// loads values from .env into the system
-// 	if err := godotenv.Load(); err != nil {
-// 		log.Print("No .env file found")
-// 	}
 // }
 
 func grabHTML() []Thread {
@@ -170,10 +166,6 @@ func grabCommentIds(linkID string) []string {
 }
 
 func getFileFromS3(s *session.Session, fileName string) error {
-	// Get the environment variable
-	// s3BucketName, exists := os.LookupEnv("S3_FILES_BUCKET")
-
-	// if exists {
 	// Open the file for use
 	file, err := os.Create(fileName)
 	if err != nil {
@@ -189,9 +181,6 @@ func getFileFromS3(s *session.Session, fileName string) error {
 		})
 
 	return errDownload
-	// }
-
-	// return errors.New("Can't get env variable")
 }
 
 func grabStockList() []string {
@@ -365,11 +354,6 @@ func writeToCsv() {
 // AddFileToS3 will upload a single file to S3, it will require a pre-built aws session
 // and will set file info like content type and encryption on the uploaded file.
 func AddFileToS3(s *session.Session, fileDir string) error {
-	// Get the environment variable
-	// s3BucketName, exists := os.LookupEnv("S3_FILES_BUCKET")
-	// s3BucketName, exists := os.LookupEnv("S3_FILES_BUCKET")
-
-	// if exists {
 	// Open the file for use
 	file, err := os.Open(fileDir)
 	if err != nil {
@@ -395,10 +379,8 @@ func AddFileToS3(s *session.Session, fileDir string) error {
 		ContentDisposition:   aws.String("attachment"),
 		ServerSideEncryption: aws.String("AES256"),
 	})
-	return err
-	// }
 
-	// return errors.New("Can't get env variable")
+	return err
 }
 
 func uploadToS3() {
@@ -427,7 +409,6 @@ func startTheShow() {
 	log.Println("# of ids...", len(commentIds))
 	log.Println("Grabbing stock symbols from csv...")
 	tickers := fetchStockList()
-	log.Println(tickers)
 	// tickers := grabStockList()
 	log.Println("Counting stock mentions...")
 	scanComments(commentIds, tickers)

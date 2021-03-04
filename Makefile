@@ -11,4 +11,4 @@ deploy: clean build
 	sls deploy --verbose
 
 run-local:
-	go run scraper/main.go
+	env ENV=local go run scraper/main.go

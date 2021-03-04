@@ -203,18 +203,22 @@ func grabStockList() []string {
 	// For API, https://dumbstockapi.com/stock?format=tickers-only&exchange=NYSE
 	// https://dumbstockapi.com/stock?format=tickers-only&exchange=NASDAQ
 
-	// TODO If file already exists
+	// Check if file already exists
 	fileName := "tickers.csv"
-	// Create a single AWS session
-	s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
-	if err != nil {
-		log.Fatal(err)
-	}
+	if _, err := os.Stat(fileName); err != nil {
+		if os.IsNotExist(err) {
+			// Create a single AWS session
+			s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+			if err != nil {
+				log.Fatal(err)
+			}
 
-	// Get file from s3 bucket
-	err = getFileFromS3(s, fileName)
-	if err != nil {
-		log.Fatal(err)
+			// Get file from s3 bucket
+			err = getFileFromS3(s, fileName)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 
 	// Open the file downloaded from s3

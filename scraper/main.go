@@ -274,22 +274,27 @@ func countTickerMentions(commentsText []Comment, tickers []string) {
 func scanComments(commentIds []string, tickers []string) {
 	orgList := commentIds
 	// Set max limit of ids
-	// if len(orgList) > 15000 {
-	// 	orgList = orgList[0:15000]
-	// }
+	if len(orgList) > 15000 {
+		orgList = orgList[0:15000]
+	}
 	// Can only query 500 ids at a time
 	// Loop through array 500 each
 	i := 0
 	for 0 < len(orgList) {
+		log.Println("comment ids left...", len(orgList))
 		// Get first 500 ids, put in string
 		idsString := strings.Join(orgList[0:500], ",")
 		// Removed used ids
-		orgList = orgList[i*500:]
+		if len(orgList) < 500 {
+			orgList = orgList[0:0]
+		} else {
+			orgList = orgList[500:]
+		}
 		// Get comment text
 		commentsText := getComments(idsString)
 		// Count stock ticker mentions
 		countTickerMentions(commentsText, tickers)
-		i++
+		i += i
 	}
 }
 

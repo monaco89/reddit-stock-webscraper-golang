@@ -274,9 +274,9 @@ func countTickerMentions(commentsText []Comment, tickers []string) {
 func scanComments(commentIds []string, tickers []string) {
 	orgList := commentIds
 	// Set max limit of ids
-	if len(orgList) > 15000 {
-		orgList = orgList[0:15000]
-	}
+	// if len(orgList) > 15000 {
+	// 	orgList = orgList[0:15000]
+	// }
 	// Can only query 500 ids at a time
 	// Loop through array 500 each
 	i := 0

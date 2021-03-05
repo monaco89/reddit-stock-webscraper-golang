@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -62,16 +61,12 @@ func Contains(a []string, x string) bool {
 	return false
 }
 
-// init is invoked before main()
-// func init() {
-// }
-
 func grabHTML() []Thread {
 	threads := []Thread{}
 	url := "https://www.reddit.com/r/wallstreetbets/search/?q=flair%3A%22Daily%20Discussion%22&restrict_sr=1&sort=new"
 	c := colly.NewCollector()
 
-	// _eYtD2XCVieq6emjKBH3m
+	//onHTML function allows the collector to use a callback function when the specific HTML tag is reached
 	// We want all objects with this specific class
 	c.OnHTML("._2INHSNB8V5eaWp4P0rY_mE", func(e *colly.HTMLElement) {
 		discussion := Thread{}
@@ -79,27 +74,6 @@ func grabHTML() []Thread {
 		discussion.URL = e.Attr("href")
 		threads = append(threads, discussion)
 	})
-
-	//onHTML function allows the collector to use a callback function when the specific HTML tag is reached
-	//in this case whenever our collector finds an
-	//anchor tag with href it will call the anonymous function
-	// specified below which will get the info from the href and append it to our slice
-	// c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-	// 	link := e.Request.AbsoluteURL(e.Attr("href"))
-	// 	if link != "" {
-	// 		response = append(response, link)
-	// 	}
-	// })
-
-	// c.OnScraped(func(r *colly.Response) {
-	// 	log.Println("Finished. Here is your data:", threads)
-	// 	// parse our response slice into JSON format
-	// 	// b, err := json.Marshal(threads)
-	// 	// if err != nil {
-	// 	// 	log.Println("failed to serialize response:", err)
-	// 	// 	return
-	// 	// }
-	// })
 
 	err := c.Visit(url)
 	if err != nil {
@@ -141,7 +115,7 @@ func getLink(threads []Thread) string {
 	}
 
 	if link == "" {
-		panic("Couldn't Get Link Id")
+		panic("Couldn't get a link id")
 	}
 
 	return link
@@ -276,6 +250,7 @@ func getComments(idsString string) []Comment {
 }
 
 func countTickerMentions(commentsText []Comment, tickers []string) {
+	// Remove characters from words
 	replacer := strings.NewReplacer(",", "", ".", "", ";", "")
 	// Loop through each comment body field
 	for _, comment := range commentsText {
@@ -298,6 +273,10 @@ func countTickerMentions(commentsText []Comment, tickers []string) {
 
 func scanComments(commentIds []string, tickers []string) {
 	orgList := commentIds
+	// Set max limit of ids
+	if len(orgList) > 15000 {
+		orgList = orgList[0:15000]
+	}
 	// Can only query 500 ids at a time
 	// Loop through array 500 each
 	i := 0
@@ -314,25 +293,7 @@ func scanComments(commentIds []string, tickers []string) {
 	}
 }
 
-func sortMap(unsortedMap map[string]StockMentions) map[string]StockMentions {
-	var sortedMap map[string]StockMentions
-	var keys []string
-	for k := range unsortedMap {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	// To perform the opertion you want
-	for _, k := range keys {
-		log.Println("Key:", k, "Value:", unsortedMap[k])
-		// TODO assign sortedMap
-	}
-
-	return sortedMap
-}
-
 func writeToCsv() {
-
 	// Write tmp file
 	file, err := os.Create("/tmp/redditStocks.csv")
 	if err != nil {
@@ -352,7 +313,7 @@ func writeToCsv() {
 	w.Flush()
 }
 
-// AddFileToS3 will upload a single file to S3, it will require a pre-built aws session
+// AddFileToS3 will upload a single file to S3
 // and will set file info like content type and encryption on the uploaded file.
 func AddFileToS3(s *session.Session, fileName string) error {
 	// Open the file for use
@@ -368,8 +329,6 @@ func AddFileToS3(s *session.Session, fileName string) error {
 	buffer := make([]byte, size)
 	file.Read(buffer)
 
-	// Config settings: this is where you choose the bucket, filename, content-type etc.
-	// of the file you're uploading.
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:               aws.String(os.Getenv("S3_FILES_BUCKET")),
 		Key:                  aws.String(fileName),
@@ -391,7 +350,6 @@ func uploadToS3() {
 		log.Fatal(err)
 	}
 
-	// Upload
 	err = AddFileToS3(s, "redditStocks.csv")
 	if err != nil {
 		log.Fatal(err)
@@ -404,7 +362,6 @@ func startTheShow() {
 	// linkID := getLink(threads)
 	// ! For testing
 	linkID := "lra5cg"
-	// log.Println("Link: ", linkID)
 	log.Println("Grabbing comment id...")
 	commentIds := grabCommentIds(linkID)
 	log.Println("# of ids...", len(commentIds))

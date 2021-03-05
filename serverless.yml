@@ -4,7 +4,7 @@ provider:
   region: "us-east-1"
   name: aws
   runtime: go1.x
-  timeout: 900000
+  timeout: 900
 
 package:
  exclude:

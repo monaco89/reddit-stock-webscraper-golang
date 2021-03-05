@@ -84,31 +84,25 @@ func grabHTML() []Thread {
 }
 
 func getLink(threads []Thread) string {
-	// yesterday := time.Now().AddDate(0, 0, -1).Format("February 16, 2021")
 	yesterday := time.Now().AddDate(0, 0, -1)
+	yesterdayString := fmt.Sprintf("%s %02d, %d", yesterday.Month(), yesterday.Day(), yesterday.Year())
 	link := ""
 
 	for _, thread := range threads {
 		/*
 		   Check if it's a DD or weekend thread
 		   Then split up text to only get last three parts
-		   Conver to datetime then compare to yesterdays date
+		   Check if yesterday string equals thread date
 		   If equal, grab link from parent element
 		*/
-		if strings.HasPrefix(thread.Title, "Daily Discussion Thread") {
+		if strings.HasPrefix(thread.Title, "Daily Discussion Thread") && thread.URL != "" {
 			threadTitle := strings.Split(thread.Title, " ")
 			threadDate := strings.Join(threadTitle[len(threadTitle)-3:], " ")
 
-			// TODO Format threadDate to a time format to compare with
-			date, err := time.Parse("February 16, 2021", threadDate)
-
-			if err != nil {
-				log.Println(err)
-			}
-
-			// log.Println(yesterday, date)
-			if yesterday == date {
-				log.Println("yesterday", threadDate)
+			if yesterdayString == threadDate {
+				threadURL := strings.Split(thread.URL, "/")
+				link = threadURL[4]
+				break
 			}
 
 		}
@@ -363,11 +357,10 @@ func uploadToS3(linkID string) {
 }
 
 func startTheShow() {
-	// threads := grabHTML()
+	threads := grabHTML()
 	log.Println("Grabbing discussion id...")
-	// linkID := getLink(threads)
-	// ! For testing
-	linkID := "lra5cg"
+	linkID := getLink(threads)
+	log.Println(linkID)
 	log.Println("Grabbing comment id...")
 	commentIds := grabCommentIds(linkID)
 	log.Println("# of ids...", len(commentIds))

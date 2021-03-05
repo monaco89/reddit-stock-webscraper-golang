@@ -336,7 +336,7 @@ func AddFileToS3(s *session.Session, fileName string) error {
 
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:               aws.String(os.Getenv("S3_FILES_BUCKET")),
-		Key:                  aws.String(fileName),
+		Key:                  aws.String("/reddit_stocks/" + fileName),
 		ACL:                  aws.String("private"),
 		Body:                 bytes.NewReader(buffer),
 		ContentLength:        aws.Int64(size),
@@ -348,14 +348,15 @@ func AddFileToS3(s *session.Session, fileName string) error {
 	return err
 }
 
-func uploadToS3() {
+func uploadToS3(linkID string) {
+	fileName := "discussion_" + linkID + ".csv"
 	// Create a single AWS session (we can re use this if we're uploading many files)
 	s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = AddFileToS3(s, "redditStocks.csv")
+	err = AddFileToS3(s, fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -379,7 +380,7 @@ func startTheShow() {
 	log.Println("Writing count to CSV...")
 	writeToCsv()
 	log.Println("Uploading CSV to S3...")
-	uploadToS3()
+	uploadToS3(linkID)
 }
 
 func main() {

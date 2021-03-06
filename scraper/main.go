@@ -252,7 +252,7 @@ func countTickerMentions(commentsText []Comment, tickers []string) {
 		words := strings.Fields(text)
 		// Loop through each word in body
 		for _, word := range words {
-			// Scan for each stock ticker in comment body then add to Stocks map
+			// Scan for each stock ticker in a single word then add to Stocks map
 			isTicker := Contains(tickers, word)
 
 			if isTicker {

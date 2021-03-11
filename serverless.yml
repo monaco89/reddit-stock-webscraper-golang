@@ -16,8 +16,8 @@ functions:
   scraper:
     handler: bin/scraper
     events:
-      # tues through fri at 03:15 AM
+      # mon through fri at 7 AM EST
       # No threads on weekends
-      - schedule: cron(15 3 ? * TUES-FRI *)
+      - schedule: cron(0 12 ? * MON-FRI *)
     environment:
       S3_FILES_BUCKET: ${env:S3_FILES_BUCKET, self:provider.S3_FILES_BUCKET}

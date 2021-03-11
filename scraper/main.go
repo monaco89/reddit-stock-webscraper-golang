@@ -66,6 +66,10 @@ func grabHTML() []Thread {
 	url := "https://www.reddit.com/r/wallstreetbets/search/?q=flair%3A%22Daily%20Discussion%22&restrict_sr=1&sort=new"
 	c := colly.NewCollector()
 
+	c.OnRequest(func(r *colly.Request) {
+		log.Println("Visiting: ", r.URL.String())
+	})
+
 	//onHTML function allows the collector to use a callback function when the specific HTML tag is reached
 	// We want all objects with this specific class
 	c.OnHTML("._2INHSNB8V5eaWp4P0rY_mE", func(e *colly.HTMLElement) {
@@ -75,9 +79,14 @@ func grabHTML() []Thread {
 		threads = append(threads, discussion)
 	})
 
+	// Set error handler
+	c.OnError(func(r *colly.Response, err error) {
+		log.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
+	})
+
 	err := c.Visit(url)
 	if err != nil {
-		log.Println(err)
+		panic(err)
 	}
 
 	return threads

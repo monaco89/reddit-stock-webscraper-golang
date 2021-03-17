@@ -37,6 +37,13 @@ type Response struct {
 	Data []string `json:"data"`
 }
 
+// Json Response
+type JsonFileResponse struct {
+	CikStr int    `json:"cik_str"`
+	Ticker string `json:"ticker"`
+	Title  string `json:"title"`
+}
+
 // CommentResponse - pushshift comment data json response
 type CommentResponse struct {
 	Data []Comment `json:"data"`
@@ -165,11 +172,11 @@ func getFileFromS3(s *session.Session, fileName string) error {
 }
 
 func grabStockList() []string {
-	fileName := "/tmp/tickers.csv"
+	fileName := "tickers.json"
 	var tickers []string
 
 	// Check if file already exists
-	_, err := os.Stat(fileName)
+	_, err := os.Stat("/tmp/" + fileName)
 	if os.IsNotExist(err) {
 		// Create a single AWS session
 		s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
@@ -191,17 +198,35 @@ func grabStockList() []string {
 	}
 
 	// Get rows from csv
-	rows, err := csv.NewReader(file).ReadAll()
-	file.Close()
+	// rows, err := csv.NewReader(file).ReadAll()
+	// file.Close()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// log.Println("rows length", len(rows))
+
+	// // We only want the first column (tickers)
+	// for _, line := range rows[1:] {
+	// 	tickers = append(tickers, line[0])
+	// }
+
+	// Read file body then convert to string
+	body, err := ioutil.ReadAll(file)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+	}
+	sb := string(body)
+
+	defer file.Close()
+	var cResp map[string]JsonFileResponse
+	// Parse the json string
+	if json.Unmarshal([]byte(sb), &cResp); err != nil {
+		log.Println(err)
 	}
 
-	log.Println("rows length", len(rows))
-
-	// We only want the first column (tickers)
-	for _, line := range rows[1:] {
-		tickers = append(tickers, line[0])
+	for _, data := range cResp {
+		tickers = append(tickers, data.Ticker)
 	}
 
 	return tickers
@@ -374,8 +399,8 @@ func startTheShow() {
 	commentIds := grabCommentIds(linkID)
 	log.Println("# of ids...", len(commentIds))
 	log.Println("Grabbing stock symbols from csv...")
-	tickers := fetchStockList()
-	// tickers := grabStockList()
+	// tickers := fetchStockList()
+	tickers := grabStockList()
 	log.Println("Counting stock mentions...")
 	scanComments(commentIds, tickers)
 	log.Println(Stocks)

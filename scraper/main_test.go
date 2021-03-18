@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -17,8 +18,8 @@ func TestContains(t *testing.T) {
 
 func TestGetLink(t *testing.T) {
 	yesterday := time.Now().AddDate(0, 0, -1)
-	yesterdayString := fmt.Sprintf("%s %02d, %d", yesterday.Month(), yesterday.Day(), yesterday.Year())
-	threads := []Thread{{Title: "Daily Discussion Thread for " + yesterdayString, URL: "/r/wallstreetbets/comments/lxi05e/daily_discussion_thread_for_march_04_2021/"}}
+	yesterdayString := strings.ToLower(fmt.Sprintf("%s_%02d_%d", yesterday.Month(), yesterday.Day(), yesterday.Year()))
+	threads := []string{"/r/wallstreetbets/comments/lxi05e/daily_discussion_thread_for_" + yesterdayString + "/"}
 	link := getLink(threads)
 	if link != "lxi05e" {
 		t.Errorf("link lxi05e was not found")

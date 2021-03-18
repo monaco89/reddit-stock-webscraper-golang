@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -18,14 +19,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/gocolly/colly"
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/chromedp"
 )
 
 // Thread - Reddit thread data
-type Thread struct {
-	Title string
-	URL   string
-}
+// type Thread struct {
+// 	// Title string
+// 	URL   string
+// }
 
 // Comment - comment data json response
 type Comment struct {
@@ -68,40 +70,57 @@ func Contains(a []string, x string) bool {
 	return false
 }
 
-func grabHTML() []Thread {
-	threads := []Thread{}
+func grabHTML() []string {
+	// threads := []Thread{}
+	var threads []string
 	url := "https://www.reddit.com/r/wallstreetbets/search/?q=flair%3A%22Daily%20Discussion%22&restrict_sr=1&sort=new"
-	c := colly.NewCollector()
 
-	c.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting: ", r.URL.String())
-	})
+	// create chrome instance
+	ctx, cancel := chromedp.NewContext(
+		context.Background(),
+		chromedp.WithLogf(log.Printf),
+	)
+	defer cancel()
 
-	//onHTML function allows the collector to use a callback function when the specific HTML tag is reached
-	// We want all objects with this specific class
-	c.OnHTML("._2INHSNB8V5eaWp4P0rY_mE", func(e *colly.HTMLElement) {
-		discussion := Thread{}
-		discussion.Title = e.Text
-		discussion.URL = e.Attr("href")
-		threads = append(threads, discussion)
-	})
+	// create a timeout
+	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
 
-	// Set error handler
-	c.OnError(func(r *colly.Response, err error) {
-		log.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
-	})
+	// navigate
+	if err := chromedp.Run(ctx, chromedp.Navigate(url)); err != nil {
+		log.Printf("could not navigate to wallstreetbets: %v", err)
+	}
 
-	err := c.Visit(url)
-	if err != nil {
-		panic(err)
+	// get project link text
+	var nodes []*cdp.Node
+	if err := chromedp.Run(ctx, chromedp.Nodes("._2INHSNB8V5eaWp4P0rY_mE", &nodes, chromedp.ByQueryAll)); err != nil {
+		log.Printf("could not get nodes: %v", err)
+	}
+
+	// process data
+	for i := 0; i < len(nodes); i++ {
+		if nodes[i].AttributeValue("href") != "" {
+			// var title string
+			// if err := chromedp.Run(ctx, chromedp.Text(nodes[i].NodeValue, &title, chromedp.NodeVisible, chromedp.ByQuery)); err != nil {
+			// 	log.Printf("could not get title: %v", err)
+			// }
+
+			// res = append(res, Thread{
+			// 	URL:   nodes[i].AttributeValue("href"),
+			// 	Title: title,
+			// })
+
+			// Just append href of threads
+			threads = append(threads, nodes[i].AttributeValue("href"))
+		}
 	}
 
 	return threads
 }
 
-func getLink(threads []Thread) string {
+func getLink(threads []string) string {
 	yesterday := time.Now().AddDate(0, 0, -1)
-	yesterdayString := fmt.Sprintf("%s %02d, %d", yesterday.Month(), yesterday.Day(), yesterday.Year())
+	yesterdayString := strings.ToLower(fmt.Sprintf("%s %02d %d", yesterday.Month(), yesterday.Day(), yesterday.Year()))
 	link := ""
 
 	for _, thread := range threads {
@@ -111,16 +130,20 @@ func getLink(threads []Thread) string {
 		   Check if yesterday string equals thread date
 		   If equal, grab link from parent element
 		*/
-		if strings.HasPrefix(thread.Title, "Daily Discussion Thread") && thread.URL != "" {
-			threadTitle := strings.Split(thread.Title, " ")
-			threadDate := strings.Join(threadTitle[len(threadTitle)-3:], " ")
+
+		// e.g. daily_discussion_thread_for_march_16_2021
+		threadURL := strings.Split(thread, "/")
+		threadTitle := threadURL[len(threadURL)-2]
+
+		if strings.HasPrefix(threadTitle, "daily_discussion_thread_for") {
+			threadDateMap := strings.Split(threadURL[len(threadURL)-2], "_")
+			threadDate := strings.Join(threadDateMap[len(threadDateMap)-3:], " ")
 
 			if yesterdayString == threadDate {
-				threadURL := strings.Split(thread.URL, "/")
+				threadURL := strings.Split(thread, "/")
 				link = threadURL[4]
 				break
 			}
-
 		}
 	}
 

@@ -245,7 +245,7 @@ func grabCommentIds(linkID string) []string {
 
 func getFileFromS3(s *session.Session, fileName string) error {
 	// Open the file for use
-	file, err := os.Create(fileName)
+	file, err := os.Create("/tmp/" + fileName)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -268,6 +268,7 @@ func grabStockList() []string {
 	// Check if file already exists
 	_, err := os.Stat("/tmp/" + fileName)
 	if os.IsNotExist(err) {
+		log.Println("Fetching from S3...")
 		// Create a single AWS session
 		s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 		if err != nil {
@@ -282,7 +283,7 @@ func grabStockList() []string {
 	}
 
 	// Open the file downloaded from s3
-	file, err := os.Open(fileName)
+	file, err := os.Open("/tmp/" + fileName)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -19,15 +18,18 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/chromedp/cdproto/cdp"
-	"github.com/chromedp/chromedp"
 )
 
 // Thread - Reddit thread data
-// type Thread struct {
-// 	// Title string
-// 	URL   string
-// }
+type Thread struct {
+	Title     string `json:"title"`
+	Permalink string `json:"permalink"`
+}
+
+// ThreadResponse - post query response
+type ThreadResponse struct {
+	Data []Thread `json:"data"`
+}
 
 // Comment - comment data json response
 type Comment struct {
@@ -39,8 +41,8 @@ type Response struct {
 	Data []string `json:"data"`
 }
 
-// Json Response
-type JsonFileResponse struct {
+// JSONFileResponse - repsonse from s3 file
+type JSONFileResponse struct {
 	CikStr int    `json:"cik_str"`
 	Ticker string `json:"ticker"`
 	Title  string `json:"title"`
@@ -70,55 +72,115 @@ func Contains(a []string, x string) bool {
 	return false
 }
 
-func grabHTML() []string {
-	// threads := []Thread{}
-	var threads []string
-	url := "https://www.reddit.com/r/wallstreetbets/search/?q=flair%3A%22Daily%20Discussion%22&restrict_sr=1&sort=new"
+// TODO Have option to run scraper
+// For Web scraper
+// func grabHTML() []string {
+// 	// threads := []Thread{}
+// 	var threads []string
+// 	url := "https://www.reddit.com/r/wallstreetbets/search/?q=flair%3A%22Daily%20Discussion%22&restrict_sr=1&sort=new"
 
-	// create chrome instance
-	ctx, cancel := chromedp.NewContext(
-		context.Background(),
-		chromedp.WithLogf(log.Printf),
-	)
-	defer cancel()
+// 	// create chrome instance
+// 	ctx, cancel := chromedp.NewContext(
+// 		context.Background(),
+// 		chromedp.WithLogf(log.Printf),
+// 	)
+// 	defer cancel()
 
-	// create a timeout
-	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
+// 	// create a timeout
+// 	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
+// 	defer cancel()
 
-	// navigate
-	if err := chromedp.Run(ctx, chromedp.Navigate(url)); err != nil {
-		log.Printf("could not navigate to wallstreetbets: %v", err)
+// 	// navigate
+// 	if err := chromedp.Run(ctx, chromedp.Navigate(url)); err != nil {
+// 		log.Printf("could not navigate to wallstreetbets: %v", err)
+// 	}
+
+// 	// get project link text
+// 	var nodes []*cdp.Node
+// 	if err := chromedp.Run(ctx, chromedp.Nodes("._2INHSNB8V5eaWp4P0rY_mE", &nodes, chromedp.ByQueryAll)); err != nil {
+// 		log.Printf("could not get nodes: %v", err)
+// 	}
+
+// 	// process data
+// 	for i := 0; i < len(nodes); i++ {
+// 		if nodes[i].AttributeValue("href") != "" {
+// 			// var title string
+// 			// if err := chromedp.Run(ctx, chromedp.Text(nodes[i].NodeValue, &title, chromedp.NodeVisible, chromedp.ByQuery)); err != nil {
+// 			// 	log.Printf("could not get title: %v", err)
+// 			// }
+
+// 			// res = append(res, Thread{
+// 			// 	URL:   nodes[i].AttributeValue("href"),
+// 			// 	Title: title,
+// 			// })
+
+// 			// Just append href of threads
+// 			threads = append(threads, nodes[i].AttributeValue("href"))
+// 		}
+// 	}
+
+// 	return threads
+// }
+
+// func getLinkFromScraper(threads []string) string {
+// 	yesterday := time.Now().AddDate(0, 0, -1)
+// 	yesterdayString := strings.ToLower(fmt.Sprintf("%s %02d %d", yesterday.Month(), yesterday.Day(), yesterday.Year()))
+// 	link := ""
+
+// 	for _, thread := range threads {
+// 		/*
+// 		   Check if it's a DD or weekend thread
+// 		   Then split up text to only get last three parts
+// 		   Check if yesterday string equals thread date
+// 		   If equal, grab link from parent element
+// 		*/
+
+// 		// e.g. daily_discussion_thread_for_march_16_2021
+// 		threadURL := strings.Split(thread, "/")
+// 		threadTitle := threadURL[len(threadURL)-2]
+
+// 		if strings.HasPrefix(threadTitle, "daily_discussion_thread_for") {
+// 			threadDateMap := strings.Split(threadURL[len(threadURL)-2], "_")
+// 			threadDate := strings.Join(threadDateMap[len(threadDateMap)-3:], " ")
+
+// 			if yesterdayString == threadDate {
+// 				threadURL := strings.Split(thread, "/")
+// 				link = threadURL[4]
+// 				break
+// 			}
+// 		}
+// 	}
+
+// 	if link == "" {
+// 		panic("Couldn't get a link id")
+// 	}
+
+// 	return link
+// }
+
+func grabThreads() []Thread {
+	resp, err := http.Get("https://api.pushshift.io/reddit/search/submission/?q=daily%20discussion&after=48h&subreddit=wallstreetbets&sort=desc&sort_type=num_comments&size=5")
+	if err != nil {
+		log.Println(err)
+	}
+	// Read body then convert to string
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+	}
+	sb := string(body)
+
+	defer resp.Body.Close()
+	var cResp ThreadResponse
+	// Parse the json string
+	if json.Unmarshal([]byte(sb), &cResp); err != nil {
+		log.Println(err)
 	}
 
-	// get project link text
-	var nodes []*cdp.Node
-	if err := chromedp.Run(ctx, chromedp.Nodes("._2INHSNB8V5eaWp4P0rY_mE", &nodes, chromedp.ByQueryAll)); err != nil {
-		log.Printf("could not get nodes: %v", err)
-	}
-
-	// process data
-	for i := 0; i < len(nodes); i++ {
-		if nodes[i].AttributeValue("href") != "" {
-			// var title string
-			// if err := chromedp.Run(ctx, chromedp.Text(nodes[i].NodeValue, &title, chromedp.NodeVisible, chromedp.ByQuery)); err != nil {
-			// 	log.Printf("could not get title: %v", err)
-			// }
-
-			// res = append(res, Thread{
-			// 	URL:   nodes[i].AttributeValue("href"),
-			// 	Title: title,
-			// })
-
-			// Just append href of threads
-			threads = append(threads, nodes[i].AttributeValue("href"))
-		}
-	}
-
-	return threads
+	return cResp.Data
 }
 
-func getLink(threads []string) string {
+func getLinkFromAPI(threads []Thread) string {
 	yesterday := time.Now().AddDate(0, 0, -1)
 	yesterdayString := strings.ToLower(fmt.Sprintf("%s %02d %d", yesterday.Month(), yesterday.Day(), yesterday.Year()))
 	link := ""
@@ -132,7 +194,7 @@ func getLink(threads []string) string {
 		*/
 
 		// e.g. daily_discussion_thread_for_march_16_2021
-		threadURL := strings.Split(thread, "/")
+		threadURL := strings.Split(thread.Permalink, "/")
 		threadTitle := threadURL[len(threadURL)-2]
 
 		if strings.HasPrefix(threadTitle, "daily_discussion_thread_for") {
@@ -140,7 +202,7 @@ func getLink(threads []string) string {
 			threadDate := strings.Join(threadDateMap[len(threadDateMap)-3:], " ")
 
 			if yesterdayString == threadDate {
-				threadURL := strings.Split(thread, "/")
+				threadURL := strings.Split(thread.Permalink, "/")
 				link = threadURL[4]
 				break
 			}
@@ -242,7 +304,7 @@ func grabStockList() []string {
 	sb := string(body)
 
 	defer file.Close()
-	var cResp map[string]JsonFileResponse
+	var cResp map[string]JSONFileResponse
 	// Parse the json string
 	if json.Unmarshal([]byte(sb), &cResp); err != nil {
 		log.Println(err)
@@ -414,9 +476,9 @@ func uploadToS3(linkID string) {
 }
 
 func startTheShow() {
-	threads := grabHTML()
+	threads := grabThreads()
 	log.Println("Grabbing discussion id...")
-	linkID := getLink(threads)
+	linkID := getLinkFromAPI(threads)
 	log.Println(linkID)
 	log.Println("Grabbing comment id...")
 	commentIds := grabCommentIds(linkID)

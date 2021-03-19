@@ -183,6 +183,7 @@ func grabThreads() []Thread {
 func getLinkFromAPI(threads []Thread) string {
 	yesterday := time.Now().AddDate(0, 0, -1)
 	yesterdayString := strings.ToLower(fmt.Sprintf("%s %02d %d", yesterday.Month(), yesterday.Day(), yesterday.Year()))
+	log.Println(yesterdayString)
 	link := ""
 
 	for _, thread := range threads {
@@ -196,11 +197,11 @@ func getLinkFromAPI(threads []Thread) string {
 		// e.g. daily_discussion_thread_for_march_16_2021
 		threadURL := strings.Split(thread.Permalink, "/")
 		threadTitle := threadURL[len(threadURL)-2]
-
+		log.Println(threadTitle, threadURL)
 		if strings.HasPrefix(threadTitle, "daily_discussion_thread_for") {
 			threadDateMap := strings.Split(threadURL[len(threadURL)-2], "_")
 			threadDate := strings.Join(threadDateMap[len(threadDateMap)-3:], " ")
-
+			log.Println(threadDate)
 			if yesterdayString == threadDate {
 				threadURL := strings.Split(thread.Permalink, "/")
 				link = threadURL[4]

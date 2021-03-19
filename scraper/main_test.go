@@ -19,8 +19,8 @@ func TestContains(t *testing.T) {
 func TestGetLink(t *testing.T) {
 	yesterday := time.Now().AddDate(0, 0, -1)
 	yesterdayString := strings.ToLower(fmt.Sprintf("%s_%02d_%d", yesterday.Month(), yesterday.Day(), yesterday.Year()))
-	threads := []string{"/r/wallstreetbets/comments/lxi05e/daily_discussion_thread_for_" + yesterdayString + "/"}
-	link := getLink(threads)
+	threads := []Thread{{Permalink: "/r/wallstreetbets/comments/lxi05e/daily_discussion_thread_for_" + yesterdayString + "/"}}
+	link := getLinkFromAPI(threads)
 	if link != "lxi05e" {
 		t.Errorf("link lxi05e was not found")
 	}

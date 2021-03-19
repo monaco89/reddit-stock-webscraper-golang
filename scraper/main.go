@@ -477,6 +477,7 @@ func uploadToS3(linkID string) {
 
 func startTheShow() {
 	threads := grabThreads()
+	log.Println(threads)
 	log.Println("Grabbing discussion id...")
 	linkID := getLinkFromAPI(threads)
 	log.Println(linkID)

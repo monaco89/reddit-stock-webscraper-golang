@@ -417,9 +417,10 @@ func scanComments(commentIds []string, tickers []string) {
 	}
 }
 
-func writeToCsv() {
+func writeToCsv(linkID string) {
+	fileName := "discussion_" + linkID + ".csv"
 	// Write tmp file
-	file, err := os.Create("/tmp/redditStocks.csv")
+	file, err := os.Create("/tmp/" + fileName)
 	if err != nil {
 		log.Println(err)
 	}
@@ -497,7 +498,7 @@ func startTheShow() {
 	scanComments(commentIds, tickers)
 	log.Println(Stocks)
 	log.Println("Writing count to CSV...")
-	writeToCsv()
+	writeToCsv(linkID)
 	log.Println("Uploading CSV to S3...")
 	uploadToS3(linkID)
 }

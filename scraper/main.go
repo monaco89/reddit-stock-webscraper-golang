@@ -378,13 +378,16 @@ func countTickerMentions(commentsText []Comment, tickers []string) {
 		// Loop through each word in body
 		for _, word := range words {
 			// Scan for each stock ticker in a single word then add to Stocks map
-			isTicker := Contains(tickers, word)
+			// TODO Stop word function
+			if word != "A" && word != "I" {
+				isTicker := Contains(tickers, word)
 
-			if isTicker {
-				// log.Println("Found:", word)
-				count := Stocks[word].Mentions
-				mentions := StockMentions{Mentions: count + 1}
-				Stocks[word] = mentions
+				if isTicker {
+					// log.Println("Found:", word)
+					count := Stocks[word].Mentions
+					mentions := StockMentions{Mentions: count + 1}
+					Stocks[word] = mentions
+				}
 			}
 		}
 	}

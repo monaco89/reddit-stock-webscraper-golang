@@ -418,7 +418,9 @@ func scanComments(commentIds []string, tickers []string) {
 }
 
 func writeToCsv(linkID string) {
-	fileName := "discussion_" + linkID + ".csv"
+	// fileName := "discussion_" + linkID + ".csv"
+	fileName := "wsb_discussion.csv"
+
 	// Write tmp file
 	file, err := os.Create("/tmp/" + fileName)
 	if err != nil {
@@ -488,19 +490,19 @@ func startTheShow() {
 	log.Println("Grabbing discussion id...")
 	linkID := getLinkFromAPI(threads)
 	log.Println(linkID)
-	log.Println("Grabbing comment id...")
-	commentIds := grabCommentIds(linkID)
-	log.Println("# of ids...", len(commentIds))
-	log.Println("Grabbing stock symbols from csv...")
-	// tickers := fetchStockList()
-	tickers := grabStockList()
-	log.Println("Counting stock mentions...")
-	scanComments(commentIds, tickers)
-	log.Println(Stocks)
-	log.Println("Writing count to CSV...")
-	writeToCsv(linkID)
-	log.Println("Uploading CSV to S3...")
-	uploadToS3(linkID)
+	// log.Println("Grabbing comment id...")
+	// commentIds := grabCommentIds(linkID)
+	// log.Println("# of ids...", len(commentIds))
+	// log.Println("Grabbing stock symbols from csv...")
+	// // tickers := fetchStockList()
+	// tickers := grabStockList()
+	// log.Println("Counting stock mentions...")
+	// scanComments(commentIds, tickers)
+	// log.Println(Stocks)
+	// log.Println("Writing count to CSV...")
+	// writeToCsv(linkID)
+	// log.Println("Uploading CSV to S3...")
+	// uploadToS3(linkID)
 }
 
 func main() {

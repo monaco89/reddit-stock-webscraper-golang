@@ -474,7 +474,9 @@ func AddFileToS3(s *session.Session, fileName string) error {
 }
 
 func uploadToS3(linkID string) {
-	fileName := "discussion_" + linkID + ".csv"
+	// fileName := "discussion_" + linkID + ".csv"
+	fileName := "wsb_discussion.csv"
+
 	// Create a single AWS session (we can re use this if we're uploading many files)
 	s, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {

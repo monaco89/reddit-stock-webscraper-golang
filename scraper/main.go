@@ -487,14 +487,14 @@ func writeToDB() {
 	svc := dynamodb.New(sess)
 
 	type Item struct {
-		Ticker   string
-		Mentions int
+		ticker   string
+		mentions int
 	}
 
 	for key, stockset := range Stocks {
 		item := Item{
-			Ticker:   key,
-			Mentions: stockset.Mentions,
+			ticker:   key,
+			mentions: stockset.Mentions,
 		}
 		av, err := dynamodbattribute.MarshalMap(item)
 		if err != nil {

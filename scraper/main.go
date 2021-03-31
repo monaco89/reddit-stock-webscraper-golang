@@ -496,6 +496,7 @@ func writeToDB() {
 			ticker:   key,
 			mentions: stockset.Mentions,
 		}
+		log.Println("new item", item, key)
 		av, err := dynamodbattribute.MarshalMap(item)
 		if err != nil {
 			log.Fatalf("Got error marshalling item: %s", err)

@@ -486,15 +486,16 @@ func writeToDB() {
 	// Create DynamoDB client
 	svc := dynamodb.New(sess)
 
+	// Struct fields must be public in order for MarshalMap to do its magic
 	type Item struct {
-		ticker   string
-		mentions int
+		Ticker   string `json:"ticker"`
+		Mentions int    `json:"mentions"`
 	}
 
 	for key, stockset := range Stocks {
 		item := Item{
-			ticker:   key,
-			mentions: stockset.Mentions,
+			Ticker:   key,
+			Mentions: stockset.Mentions,
 		}
 		log.Println("new item", item, key)
 		av, err := dynamodbattribute.MarshalMap(item)

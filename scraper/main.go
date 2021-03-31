@@ -16,6 +16,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
@@ -288,20 +290,6 @@ func grabStockList() []string {
 		log.Fatal(err)
 	}
 
-	// Get rows from csv
-	// rows, err := csv.NewReader(file).ReadAll()
-	// file.Close()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// log.Println("rows length", len(rows))
-
-	// // We only want the first column (tickers)
-	// for _, line := range rows[1:] {
-	// 	tickers = append(tickers, line[0])
-	// }
-
 	// Read file body then convert to string
 	body, err := ioutil.ReadAll(file)
 	if err != nil {
@@ -489,25 +477,63 @@ func uploadToS3(linkID string) {
 	}
 }
 
+func writeToDB() {
+	tableName := "stock-mentions"
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	// Create DynamoDB client
+	svc := dynamodb.New(sess)
+
+	type Item struct {
+		Ticker   string
+		Mentions int
+	}
+
+	for key, stockset := range Stocks {
+		item := Item{
+			Ticker:   key,
+			Mentions: stockset.Mentions,
+		}
+		av, err := dynamodbattribute.MarshalMap(item)
+		if err != nil {
+			log.Fatalf("Got error marshalling item: %s", err)
+		}
+
+		input := &dynamodb.PutItemInput{
+			Item:      av,
+			TableName: aws.String(tableName),
+		}
+
+		_, err = svc.PutItem(input)
+		if err != nil {
+			log.Fatalf("Got error calling PutItem: %s", err)
+		}
+	}
+}
+
 func startTheShow() {
 	threads := grabThreads()
-	log.Println(threads)
+	// log.Println(threads)
 	log.Println("Grabbing discussion id...")
 	linkID := getLinkFromAPI(threads)
 	log.Println(linkID)
-	// log.Println("Grabbing comment id...")
-	// commentIds := grabCommentIds(linkID)
-	// log.Println("# of ids...", len(commentIds))
-	// log.Println("Grabbing stock symbols from csv...")
-	// // tickers := fetchStockList()
-	// tickers := grabStockList()
-	// log.Println("Counting stock mentions...")
-	// scanComments(commentIds, tickers)
-	// log.Println(Stocks)
-	// log.Println("Writing count to CSV...")
-	// writeToCsv(linkID)
-	// log.Println("Uploading CSV to S3...")
-	// uploadToS3(linkID)
+	log.Println("Grabbing comment id...")
+	commentIds := grabCommentIds(linkID)
+	log.Println("# of ids...", len(commentIds))
+	log.Println("Grabbing stock symbols from json...")
+	// tickers := fetchStockList()
+	tickers := grabStockList()
+	log.Println("Counting stock mentions...")
+	scanComments(commentIds, tickers)
+	log.Println(Stocks)
+	log.Println("Writing count to CSV...")
+	writeToCsv(linkID)
+	log.Println("Uploading CSV to S3...")
+	uploadToS3(linkID)
+	log.Println("Writing to DB...")
+	writeToDB()
 }
 
 func main() {
